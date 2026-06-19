@@ -1,17 +1,5 @@
 import { useState, useEffect } from 'react';
 
-const ACTIVITIES = [
-  { id: 'ceremony', day: 'Mittwoch, 03. Sept.', title: 'Trauung & Empfang', time: '15:00 Uhr', icon: '💍', desc: 'Standesamtliche & freie Trauung im Ehrenhof des Château, gefolgt von Sekt & Canapés im Park.', capacity: null },
-  { id: 'dinner',   day: 'Mittwoch, 03. Sept.', title: 'Festdinner & Tanz',  time: '19:00 Uhr', icon: '🥂', desc: 'Mehrgängiges Dinner im großen Saal, anschließend Musik & Tanz bis in die Nacht.', capacity: null },
-  { id: 'brunch',   day: 'Donnerstag, 04. Sept.', title: 'Brunch im Garten', time: '11:00 Uhr', icon: '🌿', desc: 'Entspanntes Brunch mit frischen Produkten aus der Region auf der Château-Terrasse.', capacity: 60 },
-  { id: 'wine',     day: 'Donnerstag, 04. Sept.', title: 'Weinverkostung', time: '16:00 Uhr', icon: '🍷', desc: 'Geführte Verkostung burgundischer Weine mit einem lokalen Sommelierteam.', capacity: 30 },
-  { id: 'cycling',  day: 'Freitag, 05. Sept.', title: "Radtour durch die Côte d'Or", time: '09:00 Uhr', icon: '🚴', desc: 'Geführte Radtour durch die Weinberge des Burgunds, ca. 25 km, leichtes Gelände.', capacity: 20 },
-  { id: 'cooking',  day: 'Freitag, 05. Sept.', title: 'Kochkurs: Cuisine Bourguignonne', time: '14:00 Uhr', icon: '🍳', desc: 'Lernt gemeinsam mit einem Chefkoch klassische burgundische Rezepte zuzubereiten.', capacity: 16 },
-  { id: 'market',   day: 'Samstag, 06. Sept.', title: 'Marktbesuch Beaune', time: '08:30 Uhr', icon: '🧺', desc: 'Ausflug zum Wochenmarkt in der historischen Altstadt von Beaune, ca. 30 Min. Fahrt.', capacity: 40 },
-  { id: 'picnic',   day: 'Samstag, 06. Sept.', title: 'Picknick im Château-Park', time: '13:00 Uhr', icon: '🌸', desc: 'Großes Gartenpicknick mit Spielen, Musik und entspanntem Beisammensein.', capacity: null },
-  { id: 'farewell', day: 'Sonntag, 07. Sept.', title: 'Abschiedsbrunch', time: '10:00 Uhr', icon: '👋', desc: 'Gemütlicher letzter Morgen zusammen bevor alle die Heimreise antreten.', capacity: null },
-];
-
 const S = {
   page:     { fontFamily: "'Cormorant Garamond', Georgia, serif", background: '#F9F5EE', minHeight: '100vh', color: '#3a3228' },
   nav:      { display: 'flex', justifyContent: 'center', flexWrap: 'wrap', borderBottom: '0.5px solid #d4c4b0', padding: '1.25rem 1rem 0' },
@@ -34,6 +22,7 @@ const S = {
 
 export default function Home() {
   const [page, setPage] = useState('home');
+  const [activities, setActivities] = useState([]);
   const [rsvps, setRsvps] = useState({});
   const [votes, setVotes] = useState({});
   const [form, setForm] = useState({ name: '', email: '', guests: '1', message: '', activities: [] });
@@ -41,17 +30,26 @@ export default function Home() {
   const [submitting, setSubmitting] = useState(false);
   const [saveStatus, setSaveStatus] = useState('');
   const [votedFor, setVotedFor] = useState({});
+  const [loadingActs, setLoadingActs] = useState(true);
 
   useEffect(() => {
+    // Load activities from Supabase via API
+    fetch('/api/activities')
+      .then(r => r.json())
+      .then(d => { setActivities(d.activities || []); setLoadingActs(false); })
+      .catch(() => setLoadingActs(false));
+
     fetch('/api/votes').then(r => r.json()).then(d => setVotes(d.votes || {})).catch(() => {});
-    fetch('/api/rsvp?secret=admin').then(r => r.json()).then(d => {
-      const map = {};
-      (d.rsvps || []).forEach(r => { map[r.email] = r; });
-      setRsvps(map);
-    }).catch(() => {});
+    fetch('/api/rsvp?secret=public')
+      .then(r => r.json())
+      .then(d => {
+        const map = {};
+        (d.rsvps || []).forEach(r => { map[r.email] = r; });
+        setRsvps(map);
+      }).catch(() => {});
   }, []);
 
-  const groupedActivities = ACTIVITIES.reduce((acc, a) => {
+  const groupedActivities = activities.reduce((acc, a) => {
     if (!acc[a.day]) acc[a.day] = [];
     acc[a.day].push(a);
     return acc;
@@ -94,7 +92,6 @@ export default function Home() {
 
   return (
     <div style={S.page}>
-      {/* NAV */}
       <nav style={S.nav}>
         {[['home','Willkommen'],['info','Infos'],['activities','Programm'],['rsvp','Anmeldung']].map(([p,l]) => (
           <button key={p} style={S.navBtn(page===p)} onClick={() => setPage(p)}>{l}</button>
@@ -189,37 +186,41 @@ export default function Home() {
             <p style={{ fontStyle: 'italic', color: '#9a8a7a', fontSize: '0.88rem', margin: '0 0 0.25rem' }}>03.–07. September 2026 · Château de Veullerot</p>
             <p style={{ fontSize: '0.75rem', color: '#b0a090' }}>Zeigt eure Begeisterung mit einem ♡</p>
           </div>
-          {Object.entries(groupedActivities).map(([day, acts]) => (
-            <div key={day}>
-              <p style={S.dayLabel}>{day}</p>
-              {acts.map(act => {
-                const reg = totalRegistered(act.id);
-                const full = act.capacity && reg >= act.capacity;
-                const vc = votes[act.id] || 0;
-                const voted = votedFor[act.id];
-                return (
-                  <div key={act.id} style={{ ...S.card, marginBottom: '0.65rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.3rem', flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: '1.05rem' }}>{act.icon}</span>
-                          <span style={{ fontWeight: 500, fontSize: '0.95rem', color: '#5c4130' }}>{act.title}</span>
-                          <span style={{ fontSize: '0.72rem', color: '#9a8a7a', marginLeft: 'auto' }}>{act.time}</span>
-                        </div>
-                        <p style={{ fontSize: '0.85rem', color: '#6a5a4a', margin: '0 0 0.5rem', lineHeight: 1.65 }}>{act.desc}</p>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                          {act.capacity && <span style={{ fontSize: '0.68rem', color: full ? '#b05040' : '#9a7b5c', letterSpacing: '0.06em' }}>{full ? 'Ausgebucht' : `${reg} / ${act.capacity} Plätze`}</span>}
-                          <button onClick={() => handleVote(act.id)} style={{ background: 'none', border: 'none', cursor: voted ? 'default' : 'pointer', fontSize: '0.82rem', color: voted ? '#9a7b5c' : '#c8a888', padding: 0, display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-                            {voted ? '♥' : '♡'}{vc > 0 && <span style={{ fontSize: '0.75rem' }}>{vc}</span>}
-                          </button>
+          {loadingActs ? (
+            <p style={{ textAlign: 'center', color: '#9a8a7a', fontStyle: 'italic' }}>Lädt …</p>
+          ) : (
+            Object.entries(groupedActivities).map(([day, acts]) => (
+              <div key={day}>
+                <p style={S.dayLabel}>{day}</p>
+                {acts.map(act => {
+                  const reg = totalRegistered(act.id);
+                  const full = act.capacity && reg >= act.capacity;
+                  const vc = votes[act.id] || 0;
+                  const voted = votedFor[act.id];
+                  return (
+                    <div key={act.id} style={{ ...S.card, marginBottom: '0.65rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.3rem', flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: '1.05rem' }}>{act.icon}</span>
+                            <span style={{ fontWeight: 500, fontSize: '0.95rem', color: '#5c4130' }}>{act.title}</span>
+                            <span style={{ fontSize: '0.72rem', color: '#9a8a7a', marginLeft: 'auto' }}>{act.time}</span>
+                          </div>
+                          <p style={{ fontSize: '0.85rem', color: '#6a5a4a', margin: '0 0 0.5rem', lineHeight: 1.65 }}>{act.desc}</p>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            {act.capacity && <span style={{ fontSize: '0.68rem', color: full ? '#b05040' : '#9a7b5c', letterSpacing: '0.06em' }}>{full ? 'Ausgebucht' : `${reg} / ${act.capacity} Plätze`}</span>}
+                            <button onClick={() => handleVote(act.id)} style={{ background: 'none', border: 'none', cursor: voted ? 'default' : 'pointer', fontSize: '0.82rem', color: voted ? '#9a7b5c' : '#c8a888', padding: 0, display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                              {voted ? '♥' : '♡'}{vc > 0 && <span style={{ fontSize: '0.75rem' }}>{vc}</span>}
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          ))}
+                  );
+                })}
+              </div>
+            ))
+          )}
         </div>
       )}
 
@@ -243,7 +244,7 @@ export default function Home() {
               </p>
               {form.activities.length > 0 && (
                 <p style={{ fontSize: '0.78rem', color: '#9a8a7a', marginBottom: '1.5rem' }}>
-                  Gewählte Aktivitäten: {form.activities.map(id => ACTIVITIES.find(a => a.id === id)?.title).join(', ')}
+                  Gewählte Aktivitäten: {form.activities.map(id => activities.find(a => a.id === id)?.title).filter(Boolean).join(', ')}
                 </p>
               )}
               <button style={S.btnGhost} onClick={() => { setSubmitted(false); setSaveStatus(''); setForm({ name: '', email: '', guests: '1', message: '', activities: [] }); }}>
@@ -263,37 +264,41 @@ export default function Home() {
                 {[1,2,3,4].map(n => <option key={n} value={n}>{n} {n === 1 ? 'Person' : 'Personen'}</option>)}
               </select>
 
-              <div style={{ ...S.divider, margin: '1rem 0' }} />
+              <div style={{ width: '50px', height: '1px', background: '#c8b49a', margin: '1rem 0' }} />
               <p style={{ ...S.label, marginBottom: '0.5rem' }}>Aktivitäten (Auswahl)</p>
               <p style={{ fontSize: '0.78rem', color: '#9a8a7a', marginBottom: '0.85rem' }}>
                 Trauung &amp; Festdinner sind für alle Gäste inklusive. Wählt weitere Programmpunkte:
               </p>
 
-              {Object.entries(groupedActivities).map(([day, acts]) => (
-                <div key={day}>
-                  <p style={{ ...S.dayLabel, marginTop: '1rem' }}>{day}</p>
-                  {acts.filter(a => !['ceremony','dinner'].includes(a.id)).map(act => {
-                    const reg = totalRegistered(act.id);
-                    const full = act.capacity && reg >= act.capacity && !form.activities.includes(act.id);
-                    const sel = form.activities.includes(act.id);
-                    return (
-                      <div key={act.id} style={S.actCard(sel, full)} onClick={() => !full && handleActivityToggle(act.id)}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                          <div style={{ width: '18px', height: '18px', borderRadius: '2px', border: sel ? 'none' : '1px solid #c8b49a', background: sel ? '#7a5c3c' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: '11px', color: '#f9f5ee' }}>{sel && '✓'}</div>
-                          <span style={{ fontSize: '0.95rem' }}>{act.icon}</span>
-                          <div style={{ flex: 1 }}>
-                            <span style={{ fontWeight: 500, fontSize: '0.85rem', color: '#5c4130' }}>{act.title}</span>
-                            <span style={{ fontSize: '0.72rem', color: '#9a8a7a', marginLeft: '0.4rem' }}>{act.time}</span>
-                            {act.capacity && <span style={{ fontSize: '0.68rem', color: full ? '#b05040' : '#9a7b5c', marginLeft: '0.4rem' }}>({full ? 'ausgebucht' : `${reg}/${act.capacity}`})</span>}
+              {loadingActs ? (
+                <p style={{ color: '#9a8a7a', fontSize: '0.84rem', fontStyle: 'italic' }}>Lädt …</p>
+              ) : (
+                Object.entries(groupedActivities).map(([day, acts]) => (
+                  <div key={day}>
+                    <p style={{ ...S.dayLabel, marginTop: '1rem' }}>{day}</p>
+                    {acts.filter(a => !a.required).map(act => {
+                      const reg = totalRegistered(act.id);
+                      const full = act.capacity && reg >= act.capacity && !form.activities.includes(act.id);
+                      const sel = form.activities.includes(act.id);
+                      return (
+                        <div key={act.id} style={S.actCard(sel, full)} onClick={() => !full && handleActivityToggle(act.id)}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                            <div style={{ width: '18px', height: '18px', borderRadius: '2px', border: sel ? 'none' : '1px solid #c8b49a', background: sel ? '#7a5c3c' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: '11px', color: '#f9f5ee' }}>{sel && '✓'}</div>
+                            <span style={{ fontSize: '0.95rem' }}>{act.icon}</span>
+                            <div style={{ flex: 1 }}>
+                              <span style={{ fontWeight: 500, fontSize: '0.85rem', color: '#5c4130' }}>{act.title}</span>
+                              <span style={{ fontSize: '0.72rem', color: '#9a8a7a', marginLeft: '0.4rem' }}>{act.time}</span>
+                              {act.capacity && <span style={{ fontSize: '0.68rem', color: full ? '#b05040' : '#9a7b5c', marginLeft: '0.4rem' }}>({full ? 'ausgebucht' : `${reg}/${act.capacity}`})</span>}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
+                      );
+                    })}
+                  </div>
+                ))
+              )}
 
-              <div style={{ ...S.divider, margin: '1rem 0' }} />
+              <div style={{ width: '50px', height: '1px', background: '#c8b49a', margin: '1rem 0' }} />
               <label style={S.label}>Nachricht / Besondere Wünsche</label>
               <textarea style={{ ...S.input, height: '88px', resize: 'vertical' }} value={form.message} onChange={e => setForm(f => ({ ...f, message: e.target.value }))} placeholder="Allergien, Zimmerwunsch, Anmerkungen …" />
 
@@ -309,7 +314,7 @@ export default function Home() {
       )}
 
       <footer style={{ textAlign: 'center', padding: '1.25rem', borderTop: '0.5px solid #d4c4b0', marginTop: '1rem' }}>
-        <p style={{ ...S.eyebrow, fontSize: '0.62rem' }}>Leonie &amp; Moritz · 03.09.2026 · Château de Veullerot · Liernais, France</p>
+        <p style={{ fontSize: '0.62rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: '#9a8a7a' }}>Leonie &amp; Moritz · 03.09.2026 · Château de Veullerot · Liernais, France</p>
       </footer>
     </div>
   );
