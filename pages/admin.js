@@ -58,7 +58,7 @@ export default function Admin() {
     try {
       const [r1, r2, r3] = await Promise.all([
         fetch(`/api/rsvp?secret=${s}`).then(r => r.json()),
-        fetch(`/api/activities?secret=${s}`).then(r => r.json()),
+        fetch('/api/activities').then(r => r.json()),
         fetch('/api/votes').then(r => r.json()),
       ]);
       if (r1.error) { setAuthErr('Falsches Passwort.'); setAuthed(false); setLoading(false); return; }
