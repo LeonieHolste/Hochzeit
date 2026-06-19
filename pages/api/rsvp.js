@@ -1,50 +1,61 @@
 /**
- * /api/rsvp
- * GET  → returns all RSVPs (for admin use)
- * POST → saves a new RSVP and sends a confirmation email via mailto link
- *
- * For production: replace the in-memory store with Supabase, Airtable, or
- * any other database. The interface stays the same.
- *
- * Note: On Vercel's serverless functions the filesystem is read-only, so
- * we use an in-memory store per cold-start. For a persistent solution,
- * connect a database (see README.md).
+ * /api/rsvp — Supabase-backed
+ * GET  → returns all RSVPs (admin only)
+ * POST → saves a new RSVP to Supabase
  */
 
-const rsvps = [];
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-export default function handler(req, res) {
+async function query(path, options = {}) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1${path}`, {
+    ...options,
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=representation',
+      ...options.headers,
+    },
+  });
+  const text = await res.text();
+  return { ok: res.ok, status: res.status, data: text ? JSON.parse(text) : null };
+}
+
+export default async function handler(req, res) {
   if (req.method === 'GET') {
-    // Simple password protection — change this value!
     const { secret } = req.query;
     if (secret !== process.env.ADMIN_SECRET) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
-    return res.status(200).json({ rsvps });
+    const { ok, data } = await query('/rsvps?order=created_at.desc');
+    if (!ok) return res.status(500).json({ error: 'Datenbankfehler' });
+    const mapped = (data || []).map(r => ({
+      ...r,
+      guests: r.guests,
+      activities: r.activities || [],
+      createdAt: r.created_at,
+    }));
+    return res.status(200).json({ rsvps: mapped });
   }
 
   if (req.method === 'POST') {
     const { name, email, guests, message, activities } = req.body;
-
     if (!name || !email) {
       return res.status(400).json({ error: 'Name und E-Mail sind erforderlich.' });
     }
-
-    const entry = {
-      id: Date.now(),
-      name,
-      email,
-      guests: parseInt(guests) || 1,
-      message: message || '',
-      activities: activities || [],
-      createdAt: new Date().toISOString(),
-    };
-
-    rsvps.push(entry);
-
-    // In production: send a confirmation email here via Resend, Sendgrid, etc.
-    console.log('New RSVP:', entry);
-
+    const { ok, data } = await query('/rsvps', {
+      method: 'POST',
+      body: JSON.stringify({
+        name,
+        email,
+        guests: parseInt(guests) || 1,
+        message: message || '',
+        activities: activities || [],
+      }),
+    });
+    if (!ok) return res.status(500).json({ error: 'Speichern fehlgeschlagen.' });
+    const entry = { ...(data?.[0] || {}), createdAt: data?.[0]?.created_at };
     return res.status(200).json({ success: true, entry });
   }
 
