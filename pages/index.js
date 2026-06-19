@@ -40,12 +40,12 @@ export default function Home() {
       .catch(() => setLoadingActs(false));
 
     fetch('/api/votes').then(r => r.json()).then(d => setVotes(d.votes || {})).catch(() => {});
-    fetch('/api/rsvp?secret=public')
+    // Public endpoint — returns only guests+activities for capacity display, no personal data
+    fetch('/api/rsvp')
       .then(r => r.json())
       .then(d => {
-        const map = {};
-        (d.rsvps || []).forEach(r => { map[r.email] = r; });
-        setRsvps(map);
+        // Store as array since public response has no email key
+        setRsvps(d.rsvps || []);
       }).catch(() => {});
   }, []);
 
@@ -55,8 +55,10 @@ export default function Home() {
     return acc;
   }, {});
 
-  const totalRegistered = (id) =>
-    Object.values(rsvps).filter(r => r.activities?.includes(id)).reduce((s, r) => s + (parseInt(r.guests) || 1), 0);
+  const totalRegistered = (id) => {
+    const list = Array.isArray(rsvps) ? rsvps : Object.values(rsvps);
+    return list.filter(r => r.activities?.includes(id)).reduce((s, r) => s + (parseInt(r.guests) || 1), 0);
+  };
 
   const handleActivityToggle = (id) =>
     setForm(f => ({ ...f, activities: f.activities.includes(id) ? f.activities.filter(a => a !== id) : [...f.activities, id] }));
@@ -79,7 +81,7 @@ export default function Home() {
       const res = await fetch('/api/rsvp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
       const data = await res.json();
       if (data.success) {
-        setRsvps(r => ({ ...r, [form.email]: { ...form, guests: parseInt(form.guests) } }));
+        setRsvps(r => [...(Array.isArray(r) ? r : Object.values(r)), { guests: parseInt(form.guests), activities: form.activities }]);
         setSubmitted(true);
       } else {
         setSaveStatus(data.error || 'Etwas ist schiefgelaufen. Bitte nochmals versuchen.');

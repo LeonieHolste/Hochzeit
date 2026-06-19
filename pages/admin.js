@@ -81,9 +81,19 @@ export default function Admin() {
 
   const saveActivities = async (updated) => {
     setSaveMsg('');
-    const res = await fetch('/api/activities', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ secret, activities: updated }) });
-    const data = await res.json();
-    if (data.success) { setActivities(data.activities); setSaveMsg('Gespeichert ✓'); setTimeout(() => setSaveMsg(''), 2500); }
+    try {
+      const res = await fetch('/api/activities', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ secret, activities: updated }) });
+      const data = await res.json();
+      if (data.success) {
+        setActivities(data.activities);
+        setSaveMsg('Gespeichert ✓');
+        setTimeout(() => setSaveMsg(''), 2500);
+      } else {
+        setSaveMsg('Fehler: ' + (data.error || 'Unbekannter Fehler'));
+      }
+    } catch {
+      setSaveMsg('Verbindungsfehler beim Speichern.');
+    }
   };
 
   const updateActivity = (idx, field, value) => {
@@ -91,17 +101,27 @@ export default function Admin() {
     setActivities(updated);
   };
 
-  const addActivity = () => {
+  const addActivity = async () => {
     const newAct = { id: `act_${Date.now()}`, day: DAYS[0], title: 'Neue Aktivität', time: '10:00 Uhr', icon: '🎵', desc: '', capacity: null, required: false };
-    setActivities([...activities, newAct]);
-    setEditAct(activities.length);
+    const updated = [...activities, newAct];
+    setActivities(updated);
+    setEditAct(updated.length - 1);
+    await saveActivities(updated);
   };
 
-  const removeActivity = (idx) => {
+  const removeActivity = async (idx) => {
     if (!confirm('Aktivität wirklich löschen?')) return;
+    const actId = activities[idx].id;
+    // Delete from Supabase first
+    try {
+      await fetch('/api/activities', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secret, id: actId }),
+      });
+    } catch {}
     const updated = activities.filter((_, i) => i !== idx);
     setActivities(updated);
-    saveActivities(updated);
   };
 
   const filteredRsvps = rsvps.filter(r =>
@@ -378,13 +398,11 @@ export default function Admin() {
                   </div>
                 ))}
               </div>
-              <div style={{ marginTop: '1.25rem', display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                <button style={S.btn} onClick={() => { setSaveMsg('Einstellungen gespeichert ✓'); setTimeout(() => setSaveMsg(''), 2500); }}>Speichern</button>
-                {saveMsg && <span style={{ fontSize: '0.8rem', color: '#3b6d11' }}>{saveMsg}</span>}
+              <div style={{ marginTop: '1.25rem' }}>
+                <p style={{ fontSize: '0.78rem', color: '#9a8a7a', background: '#f5f2ed', padding: '0.75rem 1rem', borderRadius: '6px' }}>
+                  Diese Felder sind eine Erinnerungshilfe. Um sie dauerhaft zu ändern, tragt die Werte direkt in <code>pages/index.js</code> ein und deployed neu.
+                </p>
               </div>
-              <p style={{ fontSize: '0.75rem', color: '#b0a090', marginTop: '0.75rem' }}>
-                Hinweis: Diese Einstellungen werden aktuell nur lokal gespeichert. Um sie dauerhaft zu übernehmen, tragt die Werte direkt in <code>pages/index.js</code> ein oder verbindet eine Datenbank.
-              </p>
             </div>
 
             <div style={S.card}>
@@ -398,9 +416,9 @@ export default function Admin() {
             </div>
 
             <div style={S.card}>
-              <h2 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '1rem', color: '#5c4130' }}>Datenbank verbinden (empfohlen)</h2>
+              <h2 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '1rem', color: '#5c4130' }}>Datenbank</h2>
               <p style={{ fontSize: '0.84rem', color: '#6a5a4a', lineHeight: 1.7 }}>
-                Aktuell werden Anmeldungen im Arbeitsspeicher gespeichert und gehen bei Server-Neustart verloren. Für dauerhaften Betrieb empfehlen wir <strong>Supabase</strong> (kostenlos). Die genaue Anleitung steht in der <code>README.md</code>.
+                ✓ Supabase ist verbunden. Alle Anmeldungen, Aktivitäten und Votes werden dauerhaft gespeichert.
               </p>
             </div>
           </>
