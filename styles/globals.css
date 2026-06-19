@@ -1,0 +1,4 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body { background: #F9F5EE; font-family: 'Cormorant Garamond', Georgia, serif; color: #3a3228; }
+input, select, textarea, button { font-family: inherit; }
