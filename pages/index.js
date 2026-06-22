@@ -6,6 +6,12 @@ const DEFAULTS = {
   contactEmail: 'heiraten@leonie-und-moritz.de',
   venue: 'Château de Veullerot',
   location: 'Liernais, Bourgogne, France',
+  info_travel: 'TGV von Paris Gare de Lyon nach Dijon (1h35), dann Mietwagen oder Shuttle (~50 Min.) nach Liernais. Nächste Flughäfen: Lyon (LYS) oder Paris CDG. Wir organisieren Shuttles ab Dijon Bahnhof.',
+  info_accommodation: 'Das Château bietet Zimmer für ~60 Gäste. Bitte bei der Anmeldung angeben, ob ihr vor Ort schlafen möchtet. Weitere Hotels in Arnay-le-Duc (15 Min.).',
+  info_dresscode: 'Trauung & Dinner: Festlich – Abendkleid oder festlicher Anzug. Tagsüber: Smart Casual – bequem und sommerlich, aber gepflegt. Outdoor-Events: Sportliche Kleidung und festes Schuhwerk empfohlen.',
+  info_practical: 'Wetter: Anfang September in Burgund ca. 22–28 °C tagsüber, kühle Abende – eine leichte Jacke empfiehlt sich. Alle Mahlzeiten und organisierten Aktivitäten sind für euch als Gäste kostenfrei.',
+  info_contact: 'Bei Fragen meldet euch gern per E-Mail. Ein Link zur WhatsApp-Gästegruppe folgt mit der Bestätigungs-E-Mail. Wir freuen uns über jede Nachricht!',
+  info_wishlist: 'Auf Reisen statt Geschenke – unsere Erlebnis-Wunschliste teilen wir gern auf Anfrage.',
 };
 
 const S = {
@@ -92,15 +98,6 @@ export default function Home() {
 
   return (
     <div style={S.page}>
-      {/* HEADER with couple image */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1.5rem 0', maxWidth: '900px', margin: '0 auto' }}>
-        <CoupleImg />
-        <div style={{ textAlign: 'right' }}>
-          <p style={{ ...S.eyebrow, fontSize: '0.6rem' }}>{settings.dateRange}</p>
-          <p style={{ ...S.eyebrow, fontSize: '0.6rem', marginTop: '0.15rem' }}>{settings.venue}</p>
-        </div>
-      </div>
-
       <nav style={S.nav}>
         {[['home','Willkommen'],['info','Infos'],['activities','Programm'],['rsvp','Anmeldung']].map(([p,l]) => (
           <button key={p} style={S.navBtn(page===p)} onClick={() => setPage(p)}>{l}</button>
@@ -157,35 +154,27 @@ export default function Home() {
             <div style={S.divider} />
           </div>
           {[
-            { title: 'Anreise & Unterkunft', items: [
-              ['🚆','Zug','TGV von Paris Gare de Lyon nach Dijon (1h35), dann Mietwagen oder Shuttle (~50 Min.) nach Liernais.'],
-              ['✈️','Flug','Nächste Flughäfen: Lyon (LYS) oder Paris CDG. Wir organisieren Shuttles ab Dijon Bahnhof.'],
-              ['🏠','Unterkunft','Das Château bietet Zimmer für ~60 Gäste. Bitte bei der Anmeldung angeben, ob ihr vor Ort schlafen möchtet.'],
-            ]},
-            { title: 'Dresscode', items: [
-              ['👗','Trauung & Dinner','Festlich – Abendkleid oder festlicher Anzug.'],
-              ['🌿','Tagsüber','Smart Casual – bequem und sommerlich, aber gepflegt.'],
-              ['👟','Outdoor-Events','Sportliche Kleidung und festes Schuhwerk empfohlen.'],
-            ]},
-            { title: 'Praktisches', items: [
-              ['🌡️','Wetter','Anfang September in Burgund: 22–28 °C tagsüber, kühle Abende. Leichte Jacke empfohlen.'],
-              ['💰','Kosten','Alle Mahlzeiten und organisierten Aktivitäten sind für euch als Gäste kostenfrei.'],
-              ['🎁','Wunschliste','Auf Reisen statt Geschenke – unsere Erlebnis-Wunschliste auf Anfrage.'],
-            ]},
-            { title: 'Kontakt', items: [
-              ['📧','E-Mail', settings.contactEmail],
-              ['📱','WhatsApp','Link zur Gästegruppe folgt mit der Bestätigungs-E-Mail.'],
-              ['❓','Fragen','Wir freuen uns über jede Nachricht!'],
-            ]},
+            { title: 'Anreise & Unterkunft', icon: '🚆', key: 'info_travel', key2: 'info_accommodation' },
+            { title: 'Dresscode',             icon: '👗', key: 'info_dresscode' },
+            { title: 'Praktisches',           icon: '🌡️', key: 'info_practical' },
+            { title: 'Kontakt',               icon: '📧', key: 'info_contact', extra: settings.contactEmail },
+            { title: 'Wunschliste',           icon: '🎁', key: 'info_wishlist' },
           ].map((sec, si) => (
             <div key={si} style={{ ...S.card, marginBottom: '1rem' }}>
               <h3 style={S.h3}>{sec.title}</h3>
-              {sec.items.map(([ico,lbl,txt], i) => (
-                <div key={i} style={{ display: 'flex', gap: '0.6rem', marginBottom: '0.55rem', alignItems: 'flex-start' }}>
-                  <span style={{ minWidth: '1.4rem', fontSize: '0.9rem', paddingTop: '0.05rem' }}>{ico}</span>
-                  <div><span style={{ fontWeight: 500, fontSize: '0.83rem', color: '#5c4130' }}>{lbl}:</span>{' '}<span style={{ fontSize: '0.88rem', color: '#6a5a4a', lineHeight: 1.6 }}>{txt}</span></div>
+              <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start', marginBottom: sec.key2 ? '0.55rem' : 0 }}>
+                <span style={{ minWidth: '1.4rem', fontSize: '0.9rem', paddingTop: '0.05rem' }}>{sec.icon}</span>
+                <p style={{ fontSize: '0.88rem', color: '#6a5a4a', lineHeight: 1.7, margin: 0 }}>{settings[sec.key]}</p>
+              </div>
+              {sec.key2 && (
+                <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start' }}>
+                  <span style={{ minWidth: '1.4rem', fontSize: '0.9rem', paddingTop: '0.05rem' }}>🏠</span>
+                  <p style={{ fontSize: '0.88rem', color: '#6a5a4a', lineHeight: 1.7, margin: 0 }}>{settings[sec.key2]}</p>
                 </div>
-              ))}
+              )}
+              {sec.extra && (
+                <p style={{ fontSize: '0.85rem', color: '#7a5c3c', marginTop: '0.5rem', marginLeft: '2rem' }}>📬 {sec.extra}</p>
+              )}
             </div>
           ))}
         </div>

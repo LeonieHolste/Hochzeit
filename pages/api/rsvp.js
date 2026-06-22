@@ -63,6 +63,27 @@ export default async function handler(req, res) {
     return res.status(200).json({ success: true, entry });
   }
 
-  res.setHeader('Allow', ['GET', 'POST']);
+  res.setHeader('Allow', ['GET', 'POST', 'PATCH', 'DELETE']);
   res.status(405).end(`Method ${req.method} Not Allowed`);
 }
+
+  if (req.method === 'PATCH') {
+    const { secret, id, ...fields } = req.body;
+    if (secret !== process.env.ADMIN_SECRET) return res.status(401).json({ error: 'Unauthorized' });
+    if (!id) return res.status(400).json({ error: 'id required' });
+    const allowed = ['name','email','guests','message','activities'];
+    const update = Object.fromEntries(Object.entries(fields).filter(([k]) => allowed.includes(k)));
+    if (update.guests) update.guests = parseInt(update.guests);
+    const { ok, data } = await query(`/rsvps?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify(update) });
+    if (!ok) return res.status(500).json({ error: 'Aktualisierung fehlgeschlagen.' });
+    return res.status(200).json({ success: true, entry: data?.[0] });
+  }
+
+  if (req.method === 'DELETE') {
+    const { secret, id } = req.body;
+    if (secret !== process.env.ADMIN_SECRET) return res.status(401).json({ error: 'Unauthorized' });
+    if (!id) return res.status(400).json({ error: 'id required' });
+    const { ok } = await query(`/rsvps?id=eq.${id}`, { method: 'DELETE' });
+    if (!ok) return res.status(500).json({ error: 'Löschen fehlgeschlagen.' });
+    return res.status(200).json({ success: true });
+  }

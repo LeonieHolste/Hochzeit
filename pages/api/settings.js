@@ -16,12 +16,18 @@ async function query(path, options = {}) {
   return { ok: res.ok, data: text ? JSON.parse(text) : null };
 }
 
-const DEFAULTS = {
+export const DEFAULTS = {
   dateRange: '31.08.–06.09.2026',
   deadline: '01. Juli 2026',
   contactEmail: 'heiraten@leonie-und-moritz.de',
   venue: 'Château de Veullerot',
   location: 'Liernais, Bourgogne, France',
+  info_travel: 'TGV von Paris Gare de Lyon nach Dijon (1h35), dann Mietwagen oder Shuttle (~50 Min.) nach Liernais. Nächste Flughäfen: Lyon (LYS) oder Paris CDG. Wir organisieren Shuttles ab Dijon Bahnhof.',
+  info_accommodation: 'Das Château bietet Zimmer für ~60 Gäste. Bitte bei der Anmeldung angeben, ob ihr vor Ort schlafen möchtet. Weitere Hotels in Arnay-le-Duc (15 Min.).',
+  info_dresscode: 'Trauung & Dinner: Festlich – Abendkleid oder festlicher Anzug. Tagsüber: Smart Casual – bequem und sommerlich, aber gepflegt. Outdoor-Events: Sportliche Kleidung und festes Schuhwerk empfohlen.',
+  info_practical: 'Wetter: Anfang September in Burgund ca. 22–28 °C tagsüber, kühle Abende – eine leichte Jacke empfiehlt sich. Alle Mahlzeiten und organisierten Aktivitäten sind für euch als Gäste kostenfrei.',
+  info_contact: 'Bei Fragen meldet euch gern per E-Mail. Ein Link zur WhatsApp-Gästegruppe folgt mit der Bestätigungs-E-Mail. Wir freuen uns über jede Nachricht!',
+  info_wishlist: 'Auf Reisen statt Geschenke – unsere Erlebnis-Wunschliste teilen wir gern auf Anfrage.',
 };
 
 export default async function handler(req, res) {
@@ -37,7 +43,6 @@ export default async function handler(req, res) {
     const { secret, settings } = req.body;
     if (secret !== process.env.ADMIN_SECRET) return res.status(401).json({ error: 'Unauthorized' });
     if (!settings || typeof settings !== 'object') return res.status(400).json({ error: 'Invalid data' });
-
     const rows = Object.entries(settings).map(([key, value]) => ({ key, value: String(value) }));
     const { ok } = await query('/settings', {
       method: 'POST',
