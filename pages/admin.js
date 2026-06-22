@@ -96,6 +96,22 @@ export default function Admin() {
 
   const handleLogin = async (e) => { e.preventDefault(); setAuthErr(''); await fetchAll(secret); };
 
+  const refreshData = async () => {
+    setLoading(true);
+    try {
+      const [r1, r2, r3] = await Promise.all([
+        fetch(`/api/rsvp?secret=${secret}`).then(r => r.json()),
+        fetch('/api/votes').then(r => r.json()),
+        fetch('/api/activities').then(r => r.json()),
+      ]);
+      setRsvps(r1.rsvps || []);
+      setVotes(r3.votes || {});
+      setActivities(r2.activities || []);
+      showMsg('Aktualisiert ✓');
+    } catch { showMsg('Fehler beim Laden.'); }
+    setLoading(false);
+  };
+
   const totalGuests = rsvps.reduce((s, r) => s + (parseInt(r.guests) || 1), 0);
   const activityCount = (id) => rsvps.filter(r => r.activities?.includes(id)).reduce((s, r) => s + (parseInt(r.guests) || 1), 0);
   const activityRsvps = (id) => rsvps.filter(r => r.activities?.includes(id));
@@ -181,6 +197,7 @@ export default function Admin() {
   return (
     <div style={S.page}>
       <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
       <aside style={S.sidebar}>
         <div style={S.sideTop}>
           <p style={S.sideTitle}>Leonie &amp; Moritz</p>
@@ -193,8 +210,12 @@ export default function Admin() {
             </div>
           ))}
         </nav>
-        <div style={{ padding: '1rem 1.25rem', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-          <a href="/" target="_blank" style={{ fontSize: '0.72rem', color: 'rgba(249,245,238,0.4)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+        <div style={{ padding: '1rem 1.25rem', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+          <button onClick={refreshData} disabled={loading} style={{ background: 'rgba(200,180,154,0.15)', border: '1px solid rgba(200,180,154,0.3)', color: loading ? 'rgba(249,245,238,0.3)' : 'rgba(249,245,238,0.7)', borderRadius: '5px', padding: '0.45rem 0.75rem', fontSize: '0.72rem', cursor: loading ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem', width: '100%', justifyContent: 'center' }}>
+            <span style={{ display: 'inline-block', animation: loading ? 'spin 1s linear infinite' : 'none' }}>↻</span>
+            {loading ? 'Lädt …' : 'Aktualisieren'}
+          </button>
+          <a href="/" target="_blank" style={{ fontSize: '0.72rem', color: 'rgba(249,245,238,0.4)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.4rem', justifyContent: 'center' }}>
             <span>↗</span> Webseite ansehen
           </a>
         </div>

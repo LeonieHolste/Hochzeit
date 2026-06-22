@@ -53,20 +53,17 @@ async function sendNotificationEmail({ name, email, guests, activities, message,
     </div>
   `;
 
-  try {
-    await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        from: 'Hochzeit Leonie & Moritz <onboarding@resend.dev>',
-        to: [toEmail],
-        subject: `Neue Anmeldung: ${name} (${guests} Pers.)`,
-        html,
-      }),
-    });
-  } catch (e) {
-    console.error('Email send failed:', e);
-  }
+  const emailRes = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      from: 'Hochzeit Leonie & Moritz <onboarding@resend.dev>',
+      to: [toEmail],
+      subject: `Neue Anmeldung: ${name} (${guests} Pers.)`,
+      html,
+    }),
+  });
+  return emailRes;
 }
 
 export default async function handler(req, res) {
@@ -93,12 +90,18 @@ export default async function handler(req, res) {
     });
     if (!ok) return res.status(500).json({ error: 'Speichern fehlgeschlagen.' });
 
-    // Send notification email to admin — non-blocking
-    const settings = await getSettings();
-    const toEmail = settings.contactEmail || 'heiraten@leonie-und-moritz.de';
-    sendNotificationEmail({ name, email, guests: parseInt(guests) || 1, activities, message, toEmail });
+    // Send notification email to admin
+    let emailStatus = 'not_configured';
+    if (RESEND_API_KEY) {
+      const settings = await getSettings();
+      const toEmail = settings.contactEmail || 'heiraten@leonie-und-moritz.de';
+      try {
+        const emailRes = await sendNotificationEmail({ name, email, guests: parseInt(guests) || 1, activities, message, toEmail });
+        emailStatus = emailRes?.ok ? 'sent' : 'failed';
+      } catch { emailStatus = 'error'; }
+    }
 
-    return res.status(200).json({ success: true, entry: { ...(data?.[0] || {}), createdAt: data?.[0]?.created_at } });
+    return res.status(200).json({ success: true, emailStatus, entry: { ...(data?.[0] || {}), createdAt: data?.[0]?.created_at } });
   }
 
   if (req.method === 'PATCH') {
