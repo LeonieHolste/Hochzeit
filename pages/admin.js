@@ -56,15 +56,17 @@ export default function Admin() {
   const fetchAll = useCallback(async (s) => {
     setLoading(true);
     try {
-      const [r1, r2, r3] = await Promise.all([
+      const [r1, r2, r3, r4] = await Promise.all([
         fetch(`/api/rsvp?secret=${s}`).then(r => r.json()),
         fetch('/api/activities').then(r => r.json()),
         fetch('/api/votes').then(r => r.json()),
+        fetch('/api/settings').then(r => r.json()),
       ]);
       if (r1.error) { setAuthErr('Falsches Passwort.'); setAuthed(false); setLoading(false); return; }
       setRsvps(r1.rsvps || []);
       setActivities(r2.activities || []);
       setVotes(r3.votes || {});
+      if (r4.settings) setSettings(s => ({ ...s, ...r4.settings }));
       setAuthed(true);
     } catch { setAuthErr('Verbindungsfehler.'); }
     setLoading(false);
@@ -398,10 +400,17 @@ export default function Admin() {
                   </div>
                 ))}
               </div>
-              <div style={{ marginTop: '1.25rem' }}>
-                <p style={{ fontSize: '0.78rem', color: '#9a8a7a', background: '#f5f2ed', padding: '0.75rem 1rem', borderRadius: '6px' }}>
-                  Diese Felder sind eine Erinnerungshilfe. Um sie dauerhaft zu ändern, tragt die Werte direkt in <code>pages/index.js</code> ein und deployed neu.
-                </p>
+              <div style={{ marginTop: '1.25rem', display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                <button style={S.btn} onClick={async () => {
+                  setSaveMsg('');
+                  try {
+                    const res = await fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ secret, settings }) });
+                    const data = await res.json();
+                    if (data.success) { setSaveMsg('Gespeichert ✓'); setTimeout(() => setSaveMsg(''), 2500); }
+                    else { setSaveMsg('Fehler: ' + (data.error || 'Unbekannt')); }
+                  } catch { setSaveMsg('Verbindungsfehler.'); }
+                }}>Speichern</button>
+                {saveMsg && <span style={{ fontSize: '0.8rem', color: saveMsg.includes('Fehler') || saveMsg.includes('fehler') ? '#a32d2d' : '#3b6d11' }}>{saveMsg}</span>}
               </div>
             </div>
 
