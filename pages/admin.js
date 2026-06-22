@@ -101,12 +101,12 @@ export default function Admin() {
     try {
       const [r1, r2, r3] = await Promise.all([
         fetch(`/api/rsvp?secret=${secret}`).then(r => r.json()),
-        fetch('/api/votes').then(r => r.json()),
         fetch('/api/activities').then(r => r.json()),
+        fetch('/api/votes').then(r => r.json()),
       ]);
       setRsvps(r1.rsvps || []);
-      setVotes(r3.votes || {});
       setActivities(r2.activities || []);
+      setVotes(r3.votes || {});
       showMsg('Aktualisiert ✓');
     } catch { showMsg('Fehler beim Laden.'); }
     setLoading(false);
