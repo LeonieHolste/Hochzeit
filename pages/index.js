@@ -4,8 +4,10 @@ const DEFAULTS = {
   dateRange: '31.08.–06.09.2026',
   deadline: '01. Juli 2026',
   contactEmail: 'heiraten@leonie-und-moritz.de',
+  contactPhone: '',
   venue: 'Château de Veullerot',
   location: 'Liernais, Bourgogne, France',
+  heroText: 'Wir freuen uns von Herzen, eine ganze Woche mit euch feiern zu dürfen — im Herzen des Burgunds, umgeben von Weinbergen und dem Zauber eines alten Château.',
   info_travel: 'TGV von Paris Gare de Lyon nach Dijon (1h35), dann Mietwagen oder Shuttle (~50 Min.) nach Liernais. Nächste Flughäfen: Lyon (LYS) oder Paris CDG. Wir organisieren Shuttles ab Dijon Bahnhof.',
   info_accommodation: 'Das Château bietet Zimmer für ~60 Gäste. Bitte bei der Anmeldung angeben, ob ihr vor Ort schlafen möchtet. Weitere Hotels in Arnay-le-Duc (15 Min.).',
   info_dresscode: 'Trauung & Dinner: Festlich – Abendkleid oder festlicher Anzug. Tagsüber: Smart Casual – bequem und sommerlich, aber gepflegt. Outdoor-Events: Sportliche Kleidung und festes Schuhwerk empfohlen.',
@@ -112,7 +114,7 @@ export default function Home() {
             <h1 style={S.script}>Leonie &amp; Moritz</h1>
             <div style={S.divider} />
             <p style={{ ...S.eyebrow, marginBottom: '0.3rem' }}>{settings.dateRange}</p>
-            <p style={{ fontStyle: 'italic', color: '#9a8a7a', fontSize: '0.9rem', margin: 0 }}>{settings.venue} · {settings.location}</p>
+
           </div>
           <div style={{ maxWidth: '520px', margin: '0 auto', padding: '0 1.25rem 1rem' }}>
             {/* Château watercolor image */}
@@ -122,12 +124,12 @@ export default function Home() {
                 alt="Château de Veullerot"
                 style={{ width: '100%', maxWidth: '480px', height: 'auto', display: 'block', margin: '0 auto' }}
               />
-              <p style={{ fontSize: '0.72rem', color: '#b0a090', marginTop: '0.5rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{settings.venue} · {settings.location}</p>
+              <p style={{ fontSize: '0.72rem', color: '#b0a090', marginTop: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{settings.venue} · {settings.location}</p>
             </div>
 
             <div style={{ ...S.card, textAlign: 'center', marginBottom: '1.5rem' }}>
               <p style={{ fontStyle: 'italic', lineHeight: 1.85, fontSize: '1rem', color: '#5c4130', margin: 0 }}>
-                Wir freuen uns von Herzen, eine ganze Woche mit euch feiern zu dürfen — im Herzen des Burgunds, umgeben von Weinbergen und dem Zauber eines alten Château.
+                {settings.heroText || DEFAULTS.heroText}
               </p>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem', marginBottom: '1.5rem' }}>
@@ -153,30 +155,25 @@ export default function Home() {
             <h2 style={S.h2}>Alle Infos</h2>
             <div style={S.divider} />
           </div>
-          {[
-            { title: 'Anreise & Unterkunft', icon: '🚆', key: 'info_travel', key2: 'info_accommodation' },
-            { title: 'Dresscode',             icon: '👗', key: 'info_dresscode' },
-            { title: 'Praktisches',           icon: '🌡️', key: 'info_practical' },
-            { title: 'Kontakt',               icon: '📧', key: 'info_contact', extra: settings.contactEmail },
-            { title: 'Wunschliste',           icon: '🎁', key: 'info_wishlist' },
-          ].map((sec, si) => (
-            <div key={si} style={{ ...S.card, marginBottom: '1rem' }}>
-              <h3 style={S.h3}>{sec.title}</h3>
-              <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start', marginBottom: sec.key2 ? '0.55rem' : 0 }}>
-                <span style={{ minWidth: '1.4rem', fontSize: '0.9rem', paddingTop: '0.05rem' }}>{sec.icon}</span>
-                <p style={{ fontSize: '0.88rem', color: '#6a5a4a', lineHeight: 1.7, margin: 0 }}>{settings[sec.key]}</p>
+          {(() => {
+            // Parse dynamic info sections from settings
+            let sections = [];
+            try { sections = JSON.parse(settings.info_sections || '[]'); } catch {}
+            if (sections.length === 0) sections = [
+              { title: 'Anreise & Unterkunft', icon: '🚆', text: settings.info_travel || '' },
+              { title: 'Unterkunft', icon: '🏠', text: settings.info_accommodation || '' },
+              { title: 'Dresscode', icon: '👗', text: settings.info_dresscode || '' },
+              { title: 'Praktisches', icon: '🌡️', text: settings.info_practical || '' },
+              { title: 'Kontakt', icon: '📧', text: (settings.info_contact || '') + (settings.contactEmail ? '\n📬 ' + settings.contactEmail : '') + (settings.contactPhone ? '\n📱 ' + settings.contactPhone : '') },
+              { title: 'Wunschliste', icon: '🎁', text: settings.info_wishlist || '' },
+            ];
+            return sections.map((sec, si) => (
+              <div key={si} style={{ ...S.card, marginBottom: '1rem' }}>
+                <h3 style={S.h3}>{sec.icon} {sec.title}</h3>
+                <p style={{ fontSize: '0.88rem', color: '#6a5a4a', lineHeight: 1.8, margin: 0, whiteSpace: 'pre-line' }}>{sec.text}</p>
               </div>
-              {sec.key2 && (
-                <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start' }}>
-                  <span style={{ minWidth: '1.4rem', fontSize: '0.9rem', paddingTop: '0.05rem' }}>🏠</span>
-                  <p style={{ fontSize: '0.88rem', color: '#6a5a4a', lineHeight: 1.7, margin: 0 }}>{settings[sec.key2]}</p>
-                </div>
-              )}
-              {sec.extra && (
-                <p style={{ fontSize: '0.85rem', color: '#7a5c3c', marginTop: '0.5rem', marginLeft: '2rem' }}>📬 {sec.extra}</p>
-              )}
-            </div>
-          ))}
+            ));
+          })()}
         </div>
       )}
 

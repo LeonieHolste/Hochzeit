@@ -50,11 +50,23 @@ const INFO_FIELDS = [
 ];
 
 const SETTING_FIELDS = [
-  { key: 'dateRange',    label: 'Zeitraum',         ph: '31.08.–06.09.2026' },
-  { key: 'deadline',     label: 'Anmelde-Deadline', ph: '01. Juli 2026' },
-  { key: 'venue',        label: 'Venue',            ph: 'Château de Veullerot' },
-  { key: 'location',     label: 'Ort',              ph: 'Liernais, Bourgogne, France' },
-  { key: 'contactEmail', label: 'Kontakt-E-Mail',   ph: 'eure@email.de' },
+  { key: 'dateRange',    label: 'Zeitraum',          ph: '31.08.–06.09.2026' },
+  { key: 'deadline',     label: 'Anmelde-Deadline',  ph: '01. Juli 2026' },
+  { key: 'venue',        label: 'Venue',             ph: 'Château de Veullerot' },
+  { key: 'location',     label: 'Ort',               ph: 'Liernais, Bourgogne, France' },
+  { key: 'contactEmail', label: 'Kontakt-E-Mail',    ph: 'eure@email.de' },
+  { key: 'contactPhone', label: 'Kontakt-Handy',     ph: '+49 123 456789' },
+];
+
+const INFO_ICONS = ['🚆','✈️','🏠','👗','🌡️','💰','🎁','📧','📱','❓','🗺️','🚗','🚌','🍽️','🎵','🌸','🏰','🥂','💍','🌿','🧳','📍'];
+
+const DEFAULT_INFO_SECTIONS = [
+  { id: 's1', title: 'Anreise', icon: '🚆', text: 'TGV von Paris Gare de Lyon nach Dijon (1h35), dann Mietwagen oder Shuttle (~50 Min.) nach Liernais. Nächste Flughäfen: Lyon (LYS) oder Paris CDG. Wir organisieren Shuttles ab Dijon Bahnhof.' },
+  { id: 's2', title: 'Unterkunft', icon: '🏠', text: 'Das Château bietet Zimmer für ~60 Gäste. Bitte bei der Anmeldung angeben, ob ihr vor Ort schlafen möchtet. Weitere Hotels in Arnay-le-Duc (15 Min.).' },
+  { id: 's3', title: 'Dresscode', icon: '👗', text: 'Trauung & Dinner: Festlich – Abendkleid oder festlicher Anzug. Tagsüber: Smart Casual – bequem und sommerlich, aber gepflegt. Outdoor-Events: Sportliche Kleidung und festes Schuhwerk empfohlen.' },
+  { id: 's4', title: 'Praktisches', icon: '🌡️', text: 'Wetter: Anfang September in Burgund ca. 22–28 °C tagsüber, kühle Abende – eine leichte Jacke empfiehlt sich. Alle Mahlzeiten und organisierten Aktivitäten sind für euch als Gäste kostenfrei.' },
+  { id: 's5', title: 'Kontakt', icon: '📧', text: 'Bei Fragen meldet euch gern per E-Mail oder Telefon. Ein Link zur WhatsApp-Gästegruppe folgt mit der Bestätigungs-E-Mail.' },
+  { id: 's6', title: 'Wunschliste', icon: '🎁', text: 'Auf Reisen statt Geschenke – unsere Erlebnis-Wunschliste teilen wir gern auf Anfrage.' },
 ];
 
 export default function Admin() {
@@ -67,6 +79,7 @@ export default function Admin() {
   const [votes, setVotes] = useState({});
   const [settings, setSettings] = useState({});
   const [loading, setLoading] = useState(false);
+  const [infoSections, setInfoSections] = useState(DEFAULT_INFO_SECTIONS);
   const [saveMsg, setSaveMsg] = useState('');
   const [editAct, setEditAct] = useState(null);
   const [editRsvp, setEditRsvp] = useState(null);
@@ -88,7 +101,13 @@ export default function Admin() {
       setRsvps(r1.rsvps || []);
       setActivities(r2.activities || []);
       setVotes(r3.votes || {});
-      if (r4.settings) setSettings(r4.settings);
+      if (r4.settings) {
+        setSettings(r4.settings);
+        try {
+          const parsed = JSON.parse(r4.settings.info_sections || '[]');
+          if (parsed.length > 0) setInfoSections(parsed);
+        } catch {}
+      }
       setAuthed(true);
     } catch { setAuthErr('Verbindungsfehler.'); }
     setLoading(false);
@@ -421,19 +440,50 @@ export default function Admin() {
         {page === 'info' && (
           <>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'1.5rem' }}>
-              <div><h1 style={S.h1}>Info-Texte</h1><p style={S.sub}>Texte für die Info-Seite der Webseite</p></div>
-              <div style={{ display:'flex', gap:'0.75rem', alignItems:'center' }}>
+              <div><h1 style={S.h1}>Info-Texte</h1><p style={S.sub}>Bereiche der Info-Seite verwalten</p></div>
+              <div style={{ display:'flex', gap:'0.5rem', alignItems:'center' }}>
                 {saveMsg && <span style={{ fontSize:'0.8rem', color: msgColor }}>{saveMsg}</span>}
-                <button style={S.btn} onClick={()=>saveSettings(settings)}>Alle speichern</button>
+                <button style={S.btnSm} onClick={() => {
+                  const newSec = { id: `s${Date.now()}`, title: 'Neuer Bereich', icon: '📍', text: '' };
+                  setInfoSections([...infoSections, newSec]);
+                }}>+ Bereich</button>
+                <button style={S.btn} onClick={() => {
+                  const updated = { ...settings, info_sections: JSON.stringify(infoSections) };
+                  saveSettings(updated);
+                }}>Alle speichern</button>
               </div>
             </div>
-            {INFO_FIELDS.map(({key, label})=>(
-              <div key={key} style={S.card}>
-                <label style={{ ...S.label, marginTop:0 }}>{label}</label>
-                <textarea style={{ ...S.input, height:'90px', resize:'vertical', marginTop:'0.3rem' }}
-                  value={settings[key]||''} onChange={e=>setSettings(s=>({...s,[key]:e.target.value}))}/>
+            {infoSections.map((sec, idx) => (
+              <div key={sec.id} style={{ ...S.card, marginBottom:'0.75rem' }}>
+                <div style={{ display:'grid', gridTemplateColumns:'auto 1fr auto', gap:'0.75rem', alignItems:'center', marginBottom:'0.75rem' }}>
+                  <select style={{ ...S.input, width:'3.5rem', padding:'0.5rem 0.25rem', textAlign:'center', fontSize:'1.1rem' }}
+                    value={sec.icon}
+                    onChange={e => setInfoSections(infoSections.map((s,i) => i===idx ? {...s, icon: e.target.value} : s))}>
+                    {INFO_ICONS.map(ic => <option key={ic} value={ic}>{ic}</option>)}
+                  </select>
+                  <input style={S.input}
+                    value={sec.title}
+                    placeholder="Bereichsname"
+                    onChange={e => setInfoSections(infoSections.map((s,i) => i===idx ? {...s, title: e.target.value} : s))}
+                  />
+                  <button style={S.btnDanger} onClick={() => {
+                    if (!confirm(`Bereich "${sec.title}" löschen?`)) return;
+                    setInfoSections(infoSections.filter((_,i) => i !== idx));
+                  }}>Löschen</button>
+                </div>
+                <textarea
+                  style={{ ...S.input, height:'88px', resize:'vertical' }}
+                  value={sec.text}
+                  placeholder="Text für diesen Bereich …"
+                  onChange={e => setInfoSections(infoSections.map((s,i) => i===idx ? {...s, text: e.target.value} : s))}
+                />
               </div>
             ))}
+            {infoSections.length === 0 && (
+              <div style={{ ...S.card, textAlign:'center', color:'#9a8a7a', fontSize:'0.84rem' }}>
+                Noch keine Bereiche. Klickt auf "+ Bereich" um einen anzulegen.
+              </div>
+            )}
           </>
         )}
 
@@ -455,6 +505,14 @@ export default function Admin() {
                     <input style={S.input} value={settings[key]||''} onChange={e=>setSettings(s=>({...s,[key]:e.target.value}))} placeholder={ph}/>
                   </div>
                 ))}
+              </div>
+              <div style={{ marginTop:'0.75rem' }}>
+                <label style={{ ...S.label, marginTop:0 }}>Willkommenstext (Startseite)</label>
+                <textarea style={{ ...S.input, height:'88px', resize:'vertical', marginTop:'0.3rem' }}
+                  value={settings.heroText||''}
+                  onChange={e=>setSettings(s=>({...s, heroText: e.target.value}))}
+                  placeholder="Wir freuen uns von Herzen …"
+                />
               </div>
             </div>
             <div style={S.card}>
