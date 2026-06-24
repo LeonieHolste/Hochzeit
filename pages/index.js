@@ -128,7 +128,7 @@ export default function Home() {
             </div>
 
             <div style={{ ...S.card, textAlign: 'center', marginBottom: '1.5rem' }}>
-              <p style={{ fontStyle: 'italic', lineHeight: 1.85, fontSize: '1rem', color: '#5c4130', margin: 0 }}>
+              <p style={{ fontStyle: 'italic', lineHeight: 1.85, fontSize: '1rem', color: '#5c4130', margin: 0, whiteSpace: 'pre-line' }}>
                 {settings.heroText || DEFAULTS.heroText}
               </p>
             </div>

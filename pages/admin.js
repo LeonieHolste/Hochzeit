@@ -455,26 +455,50 @@ export default function Admin() {
             </div>
             {infoSections.map((sec, idx) => (
               <div key={sec.id} style={{ ...S.card, marginBottom:'0.75rem' }}>
-                <div style={{ display:'grid', gridTemplateColumns:'auto 1fr auto', gap:'0.75rem', alignItems:'center', marginBottom:'0.75rem' }}>
-                  <select style={{ ...S.input, width:'3.5rem', padding:'0.5rem 0.25rem', textAlign:'center', fontSize:'1.1rem' }}
+                <div style={{ display:'flex', gap:'0.5rem', alignItems:'center', marginBottom:'0.75rem' }}>
+                  {/* Order buttons */}
+                  <div style={{ display:'flex', flexDirection:'column', gap:'2px', flexShrink:0 }}>
+                    <button
+                      disabled={idx === 0}
+                      onClick={() => {
+                        const updated = [...infoSections];
+                        [updated[idx-1], updated[idx]] = [updated[idx], updated[idx-1]];
+                        setInfoSections(updated);
+                      }}
+                      style={{ background:'none', border:'1px solid #e0d8cc', borderRadius:'4px', width:'26px', height:'22px', cursor: idx===0 ? 'default':'pointer', color: idx===0 ? '#d0c8c0':'#7a5c3c', fontSize:'0.75rem', lineHeight:1, padding:0 }}>▲</button>
+                    <button
+                      disabled={idx === infoSections.length - 1}
+                      onClick={() => {
+                        const updated = [...infoSections];
+                        [updated[idx], updated[idx+1]] = [updated[idx+1], updated[idx]];
+                        setInfoSections(updated);
+                      }}
+                      style={{ background:'none', border:'1px solid #e0d8cc', borderRadius:'4px', width:'26px', height:'22px', cursor: idx===infoSections.length-1 ? 'default':'pointer', color: idx===infoSections.length-1 ? '#d0c8c0':'#7a5c3c', fontSize:'0.75rem', lineHeight:1, padding:0 }}>▼</button>
+                  </div>
+                  {/* Icon selector */}
+                  <select style={{ ...S.input, width:'3.5rem', padding:'0.5rem 0.25rem', textAlign:'center', fontSize:'1.1rem', flexShrink:0 }}
                     value={sec.icon}
                     onChange={e => setInfoSections(infoSections.map((s,i) => i===idx ? {...s, icon: e.target.value} : s))}>
                     {INFO_ICONS.map(ic => <option key={ic} value={ic}>{ic}</option>)}
                   </select>
-                  <input style={S.input}
+                  {/* Title */}
+                  <input style={{ ...S.input, flex:1 }}
                     value={sec.title}
                     placeholder="Bereichsname"
                     onChange={e => setInfoSections(infoSections.map((s,i) => i===idx ? {...s, title: e.target.value} : s))}
                   />
-                  <button style={S.btnDanger} onClick={() => {
+                  {/* Position badge */}
+                  <span style={{ fontSize:'0.7rem', color:'#b0a090', flexShrink:0 }}>{idx+1}/{infoSections.length}</span>
+                  {/* Delete */}
+                  <button style={{ ...S.btnDanger, flexShrink:0 }} onClick={() => {
                     if (!confirm(`Bereich "${sec.title}" löschen?`)) return;
                     setInfoSections(infoSections.filter((_,i) => i !== idx));
                   }}>Löschen</button>
                 </div>
                 <textarea
-                  style={{ ...S.input, height:'88px', resize:'vertical' }}
+                  style={{ ...S.input, height:'100px', resize:'vertical', whiteSpace:'pre-wrap' }}
                   value={sec.text}
-                  placeholder="Text für diesen Bereich …"
+                  placeholder={"Text für diesen Bereich …\n\nAbsätze werden auf der Webseite angezeigt."}
                   onChange={e => setInfoSections(infoSections.map((s,i) => i===idx ? {...s, text: e.target.value} : s))}
                 />
               </div>
@@ -508,10 +532,10 @@ export default function Admin() {
               </div>
               <div style={{ marginTop:'0.75rem' }}>
                 <label style={{ ...S.label, marginTop:0 }}>Willkommenstext (Startseite)</label>
-                <textarea style={{ ...S.input, height:'88px', resize:'vertical', marginTop:'0.3rem' }}
+                <textarea style={{ ...S.input, height:'100px', resize:'vertical', marginTop:'0.3rem', whiteSpace:'pre-wrap' }}
                   value={settings.heroText||''}
                   onChange={e=>setSettings(s=>({...s, heroText: e.target.value}))}
-                  placeholder="Wir freuen uns von Herzen …"
+                  placeholder={"Wir freuen uns von Herzen …\n\nAbsätze werden auf der Webseite angezeigt."}
                 />
               </div>
             </div>
