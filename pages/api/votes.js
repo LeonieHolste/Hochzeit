@@ -28,11 +28,9 @@ export default async function handler(req, res) {
   if (req.method === 'POST') {
     const { activityId } = req.body;
     if (!activityId) return res.status(400).json({ error: 'activityId required' });
+    if (!/^[a-zA-Z0-9_-]+$/.test(String(activityId))) return res.status(400).json({ error: 'Ungültige activityId.' });
 
-    // Use Supabase RPC to atomically increment — avoids race conditions
-    // First try upsert with increment via raw SQL through rpc
-    // Fallback: fetch + update
-    const { data: existing } = await query(`/votes?activity_id=eq.${encodeURIComponent(activityId)}`);
+    const { data: existing } = await query(`/votes?activity_id=eq.${activityId}`);
     const current = existing?.[0]?.count || 0;
 
     const { ok } = await query('/votes', {

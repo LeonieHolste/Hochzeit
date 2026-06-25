@@ -40,7 +40,11 @@ export default async function handler(req, res) {
     const { secret, settings } = req.body;
     if (secret !== process.env.ADMIN_SECRET) return res.status(401).json({ error: 'Unauthorized' });
     if (!settings || typeof settings !== 'object') return res.status(400).json({ error: 'Invalid data' });
-    const rows = Object.entries(settings).map(([key, value]) => ({ key, value: String(value) }));
+    const ALLOWED_KEYS = ['dateRange','deadline','contactEmail','contactPhone','venue','location','heroText','info_sections'];
+    const rows = Object.entries(settings)
+      .filter(([key]) => ALLOWED_KEYS.includes(key) || key.startsWith('info_'))
+      .map(([key, value]) => ({ key: String(key).slice(0,50), value: String(value).slice(0,10000) }));
+    if (rows.length === 0) return res.status(400).json({ error: 'Keine gültigen Felder.' });
     const { ok } = await query('/settings', {
       method: 'POST',
       headers: { 'Prefer': 'resolution=merge-duplicates,return=representation' },

@@ -31,6 +31,8 @@ async function getSettings() {
   } catch { return {}; }
 }
 
+const esc = (s) => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
 async function sendNotificationEmail({ name, email, guests, activities, message, toEmail }) {
   if (!RESEND_API_KEY) return;
   const activityList = activities?.length > 0 ? activities.join(', ') : 'nur Hauptevents';
@@ -41,11 +43,11 @@ async function sendNotificationEmail({ name, email, guests, activities, message,
         <p style="color: #9a8a7a; font-size: 0.85rem; margin: 0.25rem 0 0;">Leonie &amp; Moritz · 03.09.2026</p>
       </div>
       <table style="width: 100%; border-collapse: collapse; font-size: 0.95rem;">
-        <tr><td style="padding: 0.5rem 0; color: #9a8a7a; width: 140px;">Name</td><td style="padding: 0.5rem 0; font-weight: bold;">${name}</td></tr>
-        <tr><td style="padding: 0.5rem 0; color: #9a8a7a;">E-Mail</td><td style="padding: 0.5rem 0;">${email}</td></tr>
+        <tr><td style="padding: 0.5rem 0; color: #9a8a7a; width: 140px;">Name</td><td style="padding: 0.5rem 0; font-weight: bold;">${esc(name)}</td></tr>
+        <tr><td style="padding: 0.5rem 0; color: #9a8a7a;">E-Mail</td><td style="padding: 0.5rem 0;">${esc(email)}</td></tr>
         <tr><td style="padding: 0.5rem 0; color: #9a8a7a;">Personen</td><td style="padding: 0.5rem 0;">${guests}</td></tr>
-        <tr><td style="padding: 0.5rem 0; color: #9a8a7a;">Aktivitäten</td><td style="padding: 0.5rem 0;">${activityList}</td></tr>
-        ${message ? `<tr><td style="padding: 0.5rem 0; color: #9a8a7a; vertical-align: top;">Nachricht</td><td style="padding: 0.5rem 0; font-style: italic;">${message}</td></tr>` : ''}
+        <tr><td style="padding: 0.5rem 0; color: #9a8a7a;">Aktivitäten</td><td style="padding: 0.5rem 0;">${esc(activityList)}</td></tr>
+        ${message ? `<tr><td style="padding: 0.5rem 0; color: #9a8a7a; vertical-align: top;">Nachricht</td><td style="padding: 0.5rem 0; font-style: italic;">${esc(message)}</td></tr>` : ''}
       </table>
       <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #d4c4b0;">
         <p style="font-size: 0.8rem; color: #9a8a7a; margin: 0;">Diese E-Mail wurde automatisch von der Hochzeitswebseite versendet.</p>
@@ -67,9 +69,13 @@ async function sendNotificationEmail({ name, email, guests, activities, message,
 }
 
 export default async function handler(req, res) {
+  // Basic abuse prevention: reject oversized payloads
+  const contentLength = parseInt(req.headers['content-length'] || '0');
+  if (contentLength > 10000) return res.status(413).json({ error: 'Payload zu groß.' });
+
   if (req.method === 'GET') {
-    // Admin: secret via header (X-Admin-Secret) or query param (legacy)
-    const secret = req.headers['x-admin-secret'] || req.query.secret;
+    // Admin: secret via header only
+    const secret = req.headers['x-admin-secret'];
     if (secret) {
       if (secret !== process.env.ADMIN_SECRET) return res.status(401).json({ error: 'Unauthorized' });
       const { ok, data } = await query('/rsvps?order=created_at.desc');
@@ -86,9 +92,22 @@ export default async function handler(req, res) {
     const { name, email, guests, message, activities } = req.body;
     if (!name || !email) return res.status(400).json({ error: 'Name und E-Mail sind erforderlich.' });
 
+    // Basic input sanitization
+    const sanitize = (str, max = 200) => String(str || '').replace(/<[^>]*>/g, '').trim().slice(0, max);
+    const cleanName = sanitize(name, 100);
+    const cleanEmail = sanitize(email, 100);
+    const cleanMessage = sanitize(message, 1000);
+    const cleanGuests = Math.min(Math.max(parseInt(guests) || 1, 1), 10);
+    const cleanActivities = Array.isArray(activities) ? activities.slice(0, 20).map(a => sanitize(a, 50)) : [];
+
+    // Basic email format check
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      return res.status(400).json({ error: 'Ungültige E-Mail-Adresse.' });
+    }
+
     const { ok, data } = await query('/rsvps', {
       method: 'POST',
-      body: JSON.stringify({ name, email, guests: parseInt(guests) || 1, message: message || '', activities: activities || [] }),
+      body: JSON.stringify({ name: cleanName, email: cleanEmail, guests: cleanGuests, message: cleanMessage, activities: cleanActivities }),
     });
     if (!ok) return res.status(500).json({ error: 'Speichern fehlgeschlagen.' });
 
@@ -98,7 +117,7 @@ export default async function handler(req, res) {
       const settings = await getSettings();
       const toEmail = settings.contactEmail || 'heiraten@leonie-und-moritz.de';
       try {
-        const emailRes = await sendNotificationEmail({ name, email, guests: parseInt(guests) || 1, activities, message, toEmail });
+        const emailRes = await sendNotificationEmail({ name: cleanName, email: cleanEmail, guests: cleanGuests, activities: cleanActivities, message: cleanMessage, toEmail });
         emailStatus = emailRes?.ok ? 'sent' : 'failed';
       } catch { emailStatus = 'error'; }
     }
@@ -112,7 +131,11 @@ export default async function handler(req, res) {
     if (!id) return res.status(400).json({ error: 'id required' });
     const allowed = ['name', 'email', 'guests', 'message', 'activities'];
     const update = Object.fromEntries(Object.entries(fields).filter(([k]) => allowed.includes(k)));
-    if (update.guests) update.guests = parseInt(update.guests);
+    if (update.name) update.name = String(update.name).replace(/<[^>]*>/g,'').trim().slice(0,100);
+    if (update.email) update.email = String(update.email).replace(/<[^>]*>/g,'').trim().slice(0,100);
+    if (update.message) update.message = String(update.message).replace(/<[^>]*>/g,'').trim().slice(0,1000);
+    if (update.guests) update.guests = Math.min(Math.max(parseInt(update.guests)||1,1),10);
+    if (update.activities) update.activities = Array.isArray(update.activities) ? update.activities.slice(0,20) : [];
     const { ok, data } = await query(`/rsvps?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify(update) });
     if (!ok) return res.status(500).json({ error: 'Aktualisierung fehlgeschlagen.' });
     return res.status(200).json({ success: true, entry: data?.[0] });

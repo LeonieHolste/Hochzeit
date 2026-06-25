@@ -54,6 +54,7 @@ export default async function handler(req, res) {
   if (req.method === 'DELETE') {
     const { secret, id } = req.body;
     if (secret !== process.env.ADMIN_SECRET) return res.status(401).json({ error: 'Unauthorized' });
+    if (!id || !/^[a-zA-Z0-9_-]+$/.test(String(id))) return res.status(400).json({ error: 'Ungültige ID.' });
     const { ok } = await query(`/activities?id=eq.${id}`, { method: 'DELETE' });
     if (!ok) return res.status(500).json({ error: 'Löschen fehlgeschlagen.' });
     return res.status(200).json({ success: true });
