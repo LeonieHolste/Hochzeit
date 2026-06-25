@@ -92,7 +92,7 @@ export default function Admin() {
     setLoading(true);
     try {
       const [r1, r2, r3, r4] = await Promise.all([
-        fetch(`/api/rsvp?secret=${s}`).then(r => r.json()),
+        fetch('/api/rsvp', { headers: { 'x-admin-secret': s } }).then(r => r.json()),
         fetch('/api/activities').then(r => r.json()),
         fetch('/api/votes').then(r => r.json()),
         fetch('/api/settings').then(r => r.json()),
@@ -119,7 +119,7 @@ export default function Admin() {
     setLoading(true);
     try {
       const [r1, r2, r3] = await Promise.all([
-        fetch(`/api/rsvp?secret=${secret}`).then(r => r.json()),
+        fetch('/api/rsvp', { headers: { 'x-admin-secret': secret } }).then(r => r.json()),
         fetch('/api/activities').then(r => r.json()),
         fetch('/api/votes').then(r => r.json()),
       ]);

@@ -1,5 +1,5 @@
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY;
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 
 async function query(path, options = {}) {
@@ -68,13 +68,15 @@ async function sendNotificationEmail({ name, email, guests, activities, message,
 
 export default async function handler(req, res) {
   if (req.method === 'GET') {
-    const { secret } = req.query;
+    // Admin: secret via header (X-Admin-Secret) or query param (legacy)
+    const secret = req.headers['x-admin-secret'] || req.query.secret;
     if (secret) {
       if (secret !== process.env.ADMIN_SECRET) return res.status(401).json({ error: 'Unauthorized' });
       const { ok, data } = await query('/rsvps?order=created_at.desc');
       if (!ok) return res.status(500).json({ error: 'Datenbankfehler' });
       return res.status(200).json({ rsvps: (data || []).map(mapRsvp) });
     }
+    // Public: only guests + activities for capacity display
     const { ok, data } = await query('/rsvps?select=guests,activities');
     if (!ok) return res.status(500).json({ rsvps: [] });
     return res.status(200).json({ rsvps: (data || []).map(r => ({ guests: r.guests, activities: r.activities || [] })) });
